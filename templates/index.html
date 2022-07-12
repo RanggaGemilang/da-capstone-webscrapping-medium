@@ -15,10 +15,10 @@
 					<br>
 					<br>
 					<h1 class="mb-2">
-						U.S Box Office Movies
+						IDR rate vs Dollar
 					</h1>
 					<h3>
-						Top 10 Titles
+						6-months Interval: IDR rate movement
 					</h3>
 					<br>
 				</div>
@@ -34,7 +34,7 @@
 							{{ card_data }}
 						</h2>
 						<h4 class="card-category">
-							Mean of Gross
+							Mean of IDR Rate
 						</h4>
 					</div>
 				</div>
@@ -43,11 +43,9 @@
 		<div class="row">
 			<div class="col-md-12 col-lg-12 col-sm-12">
 				<div class="tab">
-					<button class="tablinks" onclick="openTab(event, 'Gross') " id="defaultOpen">Gross
+					<button class="tablinks" onclick="openTab(event, 'profile') " id="defaultOpen">by Rangga Gemilang
 					</button>
-					<button class="tablinks" onclick="openTab(event, 'Votes')">Votes
-					</button>
-					<button class="tablinks" onclick="openTab(event, 'Ratings')">Ratings
+					<button class="tablinks" onclick="openTab(event, 'Own')">(Create-Your-Own)
 					</button>
 				</div>
 			</div>
@@ -55,34 +53,18 @@
 		<div class="row">
 			<div class="col-md-12 col-lg-12 col-sm-12">
 				<!-- Tab content -->
-				<div id="Gross" class="tabcontent">
+				<div id="profile" class="tabcontent">
 					<br>
-					<h3 style="color: #333333;text-align:center">Gross($)</h3>
+					<h3 style="color: #333333;text-align:center">IDR Movement</h3>
 					<div class="img-container"">
 						{% if funded_plot != None %}
 					  <img src="data:image/png;base64,{{ plot_result }}" >
 						{% endif %}
 					</div>
 				</div>
-				<div id="Votes" class="tabcontent">
+				<div id="Own" class="tabcontent">
 				  <!-- Define your own analysis for extra challange -->
-					<br>
-					<h3 style="color: #333333;text-align:center">Votes</h3>
-					<div class="img-container"">
-						{% if plot_result2 != None %}
-					  <img src="data:image/png;base64,{{ plot_result2 }}" >
-						{% endif %}
-					</div>
-				</div>
-				<div id="Ratings" class="tabcontent">
-					<!-- Define your own analysis for extra challange -->
-					<br>
-					<h3 style="color: #333333;text-align:center">Ratings</h3>
-					<div class="img-container"">
-						{% if plot_result3 != None %}
-					   <img src="data:image/png;base64,{{ plot_result3 }}" >
-						{% endif %}
-					</div>
+
 				</div>
 			</div>
 		</div>

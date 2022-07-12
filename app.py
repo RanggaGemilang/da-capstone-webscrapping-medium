@@ -6,93 +6,66 @@ from io import BytesIO
 import base64
 from bs4 import BeautifulSoup 
 import requests
-import re
-import numpy as np
 
 #don't change this
 matplotlib.use('Agg')
 app = Flask(__name__) #do not change this
 
 #insert the scrapping here
-url_get = requests.get('https://www.imdb.com/search/title/?release_date=2021-01-01,2021-12-31&sort=boxoffice_gross_us,desc')
-soup = BeautifulSoup(url_get.content,"lxml")
+url_get = requests.get('https://www.exchange-rates.org/history/IDR/USD/T')
+soup = BeautifulSoup(url_get.content,"html.parser")
 
 #find your right key here
-table = soup.find('div', attrs={'class':'lister list detail sub-list'})
-row = table.find_all('div', attrs={'class':'lister-item mode-advanced'})
-
+table = soup.find('div', attrs={'class':'table-responsive'})
+row = table.find_all('tr')
 row_length = len(row)
 
-list_metascore = [] #to store the score
-list_title = []
-list_rating = []
-list_vote = []
-list_gross = []
+temp = [] #initiating a list 
 
-for i in range(0,10):
-    # 
-    meta = str(soup.find_all('div', attrs={'class':'inline-block ratings-metascore'})[i])
-    list_metascore.append(re.findall(r'\b\d+\b', meta)[0])
+for i in range(1, row_length):
+	period = row[i].select('td')[0].text
+	value = row[i].select('td')[2].text
+	temp.append((period,value))
 
-for i in range(0,10):
-    products = soup.select(".lister-item.mode-advanced")
-    title = products[i].select('a')[1].text
-    list_title.append(title)
-
-for i in range(0,10):
-    products = soup.select(".lister-item.mode-advanced")
-    rating = products[i].select('strong')[0].text
-    list_rating.append(rating)
-
-for i in range(0,10):
-    products = soup.select(".sort-num_votes-visible")
-    votes = products[i].select('span')[1].text
-    list_vote.append(votes)
-
-for i in range(0,10):
-    products = soup.select(".sort-num_votes-visible")
-    gross = products[i].select('span')[4]['data-value']
-    list_gross.append(gross) 
-
-temp = list(zip(list_title,list_rating,list_metascore,list_vote,list_gross))
+temp = temp[::-1]
 
 #change into dataframe
-df = pd.DataFrame(temp,columns=('Title','Rating','Metascore','Votes','Gross($)'))
+df = pd.DataFrame(temp, columns=('Date','Kurs(IDR)'))
 
-#data cleansing
-df['Title'] = df['Title'].astype('str')
-df['Rating'] = df['Rating'].astype('float64')
-df['Metascore'] = df['Metascore'].astype('int64')
-df['Votes'] = df['Votes'].str.replace(',','')
-df['Votes'] = df['Votes'].astype('int64')
-df['Gross($)'] = df['Gross($)'].str.replace(',','')
-df['Gross($)'] = df['Gross($)'].astype('int64')
+#insert data wrangling here
+df['Date'] = pd.to_datetime(df['Date'])
+df['Kurs(IDR)'] = df['Kurs(IDR)'].str.replace(',','')
+df['Kurs(IDR)'] = df['Kurs(IDR)'].str.replace(' IDR','')
+df['Kurs(IDR)'] = df['Kurs(IDR)'].astype('float64')
 
-#for rating plot
-temp_r = list(zip(list_title,list_rating,list_metascore))
-df2 = pd.DataFrame(temp_r,columns=('Title','Rating','Metascore'))
-df2['Rating'] = df2['Rating'].str.replace('.','')
-df2['Rating'] = df2['Rating'].astype('int64')
-df2['Metascore'] = df2['Metascore'].astype('int64')
+#Add Saturday & Sunday date
+new_daterange= pd.date_range('2022-01-12', '2022-07-11')
+df = df.set_index('Date')
+df = df.reindex(new_daterange)
+df.index.names = ['Date']
+
+#Fill the missing values
+df = df.fillna(method='ffill').fillna(method='bfill')
 
 #end of data wranggling 
+plt.style.use('ggplot')
+plt.rcParams['font.family'] = "serif"
+plt.rcParams['font.size'] = 12
 
 @app.route("/")
 def index(): 
 	
-	card_data = f'${df["Gross($)"].mean().round(0):,.0f}' #be careful with the " and ' 
+	card_data = f'IDR {df["Kurs(IDR)"].mean().round(2)}' #be careful with the " and ' 
 
-	# generate gross plot
-	df_percent = pd.crosstab(index=df['Title'],columns='Gross($)',values=df['Gross($)'],aggfunc='sum',normalize=True).\
-            sort_values(by='Gross($)',ascending=False)*100
-	X = df_percent.index[::-1]
-	Y = df_percent['Gross($)'][::-1]
-	plt.figure(figsize=(20,9))
-	plt.barh(X ,Y)
-	plt.xlabel("Percentage (%)", fontweight='bold')
-
+	# generate plot
+	ax = df.plot(figsize = (20,9))
+	ax.plot(df.index.values, df['Kurs(IDR)'],color='red')
+	plt.xlabel("DATE", fontweight='bold')                           
+	plt.ylabel("Kurs(IDR)", fontweight='bold')
+	plt.yticks(rotation=45)
+	plt.legend(fontsize=12)  
 	
-	# Rendering gross plot
+	# Rendering plot
 	# Do not change this
 	figfile = BytesIO()
 	plt.savefig(figfile, format='png', transparent=True)
@@ -100,41 +73,11 @@ def index():
 	figdata_png = base64.b64encode(figfile.getvalue())
 	plot_result = str(figdata_png)[2:-1]
 
-	# generate votes plot
-	df_votes = pd.crosstab(index=df['Title'],columns='Votes',values=df['Votes'],aggfunc='sum',normalize=True).\
-            sort_values(by='Votes',ascending=False)*100
-	X2 = df_votes.index[::-1]
-	Y2 = df_votes['Votes'][::-1]
-	plt.figure(figsize=(20,9))
-	plt.barh(X2 ,Y2, color='orange')
-	plt.xlabel("Percentage (%)", fontweight='bold')
-
-	# Rendering votes plot
-	figfile = BytesIO()
-	plt.savefig(figfile, format='png', transparent=True)
-	figfile.seek(0)
-	figdata_png = base64.b64encode(figfile.getvalue())
-	plot_result2 = str(figdata_png)[2:-1] 
-
-	# generate rating plot
-	df_rating = df2.groupby('Title').sum()[['Metascore','Rating']].sort_values(by='Rating',ascending=True)
-	df_rating.plot.barh(figsize=(20,9))
-	plt.xlabel("Rating", fontweight='bold')
-	plt.ylabel('')
-
-	# Rendering rating plot
-	figfile = BytesIO()
-	plt.savefig(figfile, format='png', transparent=True)
-	figfile.seek(0)
-	figdata_png = base64.b64encode(figfile.getvalue())
-	plot_result3 = str(figdata_png)[2:-1]
-
 	# render to html
 	return render_template('index.html',
 		card_data = card_data, 
-		plot_result=plot_result,
-		plot_result2=plot_result2,
-		plot_result3=plot_result3)
+		plot_result=plot_result
+		)
 
 
 if __name__ == "__main__": 
